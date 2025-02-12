@@ -4,25 +4,35 @@ import os
 
 app = Flask(__name__)
 
-# Load API Keys from Heroku Environment Variables
-NOTICEABLE_API_KEY = os.getenv("NOTICEABLE_API_KEY")
+# Load API Credentials
 MARKETO_CLIENT_ID = os.getenv("MARKETO_CLIENT_ID")
 MARKETO_CLIENT_SECRET = os.getenv("MARKETO_CLIENT_SECRET")
 MARKETO_BASE_URL = os.getenv("MARKETO_BASE_URL")
 
 def get_marketo_token():
-    """Get Marketo Auth Token"""
-    auth_url = f"{MARKETO_BASE_URL}/identity/oauth/token?grant_type=client_credentials&client_id={MARKETO_CLIENT_ID}&client_secret={MARKETO_CLIENT_SECRET}"
-    response = requests.get(auth_url)
-    return response.json().get("access_token")
+    """Fetch Marketo API Access Token"""
+    auth_url = f"{MARKETO_BASE_URL}/identity/oauth/token"
+    params = {
+        "grant_type": "client_credentials",
+        "client_id": MARKETO_CLIENT_ID,
+        "client_secret": MARKETO_CLIENT_SECRET
+    }
+    response = requests.get(auth_url, params=params)
+    response_json = response.json()
+    
+    if "access_token" in response_json:
+        return response_json["access_token"]
+    else:
+        print("Error fetching Marketo token:", response_json)
+        return None
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Noticeable to Marketo Sync is Running!"
+    return "Marketo Subscriber Sync Running!"
 
 @app.route("/noticeable-webhook", methods=["POST"])
 def noticeable_webhook():
-    """Handle Noticeable Webhooks for Subscribers and Announcements"""
+    """Handles Noticeable Webhooks"""
     data = request.json
     event_type = data.get("type")
 
@@ -34,15 +44,14 @@ def noticeable_webhook():
         email = data["data"]["email"]
         remove_subscriber_from_marketo(email)
 
-    elif event_type == "announcement.published":
-        announcement = data["data"]["content"]
-        update_marketo_token(announcement)
-
     return jsonify({"status": "success"})
 
 def add_subscriber_to_marketo(email):
-    """Add subscriber to Marketo List"""
+    """Add subscriber to Marketo"""
     token = get_marketo_token()
+    if not token:
+        return
+
     url = f"{MARKETO_BASE_URL}/rest/v1/leads.json"
     payload = {
         "action": "createOrUpdate",
@@ -50,23 +59,22 @@ def add_subscriber_to_marketo(email):
         "input": [{"email": email}]
     }
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    requests.post(url, json=payload, headers=headers)
+    response = requests.post(url, json=payload, headers=headers)
+    print(response.json())
 
 def remove_subscriber_from_marketo(email):
-    """Remove subscriber from Marketo List"""
+    """Remove subscriber from Marketo"""
     token = get_marketo_token()
-    url = f"{MARKETO_BASE_URL}/rest/v1/leads.json?_method=DELETE"
-    payload = {"input": [{"email": email}]}
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    requests.post(url, json=payload, headers=headers)
+    if not token:
+        return
 
-def update_marketo_token(content):
-    """Update Marketo Program Token with Noticeable Release Notes"""
-    token = get_marketo_token()
-    url = f"{MARKETO_BASE_URL}/rest/asset/v1/folder/byName.json?name=Your-Folder-Name"
-    payload = {"content": content}
+    url = f"{MARKETO_BASE_URL}/rest/v1/leads/delete.json"
+    payload = {
+        "input": [{"email": email}]
+    }
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    requests.post(url, json=payload, headers=headers)
+    response = requests.post(url, json=payload, headers=headers)
+    print(response.json())
 
 if __name__ == "__main__":
     app.run(debug=True)
