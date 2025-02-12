@@ -4,10 +4,10 @@ import os
 
 app = Flask(__name__)
 
-# Use the provided Marketo Access Token
+# Use the provided Marketo Access Token and correct List ID
 MARKETO_ACCESS_TOKEN = "20d5f0ce-fac6-40b1-8f30-1f6693169d6c:ab"
 MARKETO_BASE_URL = "https://841-CLM-681.mktorest.com"
-MARKETO_LIST_ID = "1907"  # Replace with your actual Marketo List ID
+MARKETO_LIST_ID = "1907"  # ✅ Updated List ID
 
 @app.route("/", methods=["GET"])
 def home():
@@ -30,7 +30,7 @@ def noticeable_webhook():
     return jsonify({"status": "success"})
 
 def add_subscriber_to_list(email):
-    """Add lead to a specific Marketo Static List"""
+    """Add lead to the correct Marketo Static List"""
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
     payload = {"input": [{"email": email}]}
     headers = {
@@ -42,7 +42,7 @@ def add_subscriber_to_list(email):
     print(f"Add to List Response: {response.json()}")  # Debugging
 
 def remove_subscriber_from_list(email):
-    """Remove lead from a specific Marketo Static List"""
+    """Remove lead from the correct Marketo Static List"""
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
     payload = {"input": [{"email": email}]}
     headers = {
