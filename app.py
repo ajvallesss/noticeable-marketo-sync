@@ -53,14 +53,19 @@ def add_subscriber_to_list(email):
     response = requests.post(url, json=payload, headers=headers)
     response_data = response.json()
 
+    # If Marketo returns an invalid list ID error, log it
+    if "errors" in response_data:
+        print(f"❌ Error adding to list: {response_data['errors']}")
+
     # If token is expired, refresh it and retry once
     if "errors" in response_data and response_data["errors"][0]["code"] in ["601", "602"]:
         print("🔄 Token expired. Refreshing and retrying...")
         MARKETO_ACCESS_TOKEN = get_marketo_access_token()
         headers["Authorization"] = f"Bearer {MARKETO_ACCESS_TOKEN}"
         response = requests.post(url, json=payload, headers=headers)
-    
+
     print(f"✅ Add to List Response: {response.json()}")
+
 
 # Remove subscriber from Marketo list
 def remove_subscriber_from_list(email):
