@@ -9,7 +9,7 @@ app = Flask(__name__)
 MARKETO_CLIENT_ID = os.getenv("MARKETO_CLIENT_ID")
 MARKETO_CLIENT_SECRET = os.getenv("MARKETO_CLIENT_SECRET")
 MARKETO_BASE_URL = "https://841-CLM-681.mktorest.com"
-MARKETO_LIST_ID = "1907"  # ✅ Use the correct Marketo List ID
+MARKETO_LIST_ID = "1907"  # ✅ Replace with your actual Marketo List ID
 
 # Cache token and expiration
 marketo_token = None
@@ -26,8 +26,8 @@ def get_marketo_token():
     auth_url = f"{MARKETO_BASE_URL}/identity/oauth/token"
     params = {
         "grant_type": "client_credentials",
-        "client_id": os.getenv("MARKETO_CLIENT_ID"),
-        "client_secret": os.getenv("MARKETO_CLIENT_SECRET")
+        "client_id": MARKETO_CLIENT_ID,
+        "client_secret": MARKETO_CLIENT_SECRET
     }
     response = requests.get(auth_url, params=params)
     response_json = response.json()
@@ -39,6 +39,10 @@ def get_marketo_token():
     else:
         print("Error fetching Marketo token:", response_json)
         return None
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Noticeable-Marketo Sync is Running!"
 
 @app.route("/noticeable-webhook", methods=["POST"])
 def noticeable_webhook():
