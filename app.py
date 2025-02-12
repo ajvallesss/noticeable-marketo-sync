@@ -31,7 +31,13 @@ def noticeable_webhook():
 def add_subscriber_to_list(email):
     """Add lead to the correct Marketo Static List"""
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
-    payload = {"input": [{"email": email}]}
+    
+    # Correct payload format for Marketo
+    payload = {
+        "input": [{"email": email}],
+        "action": "add"
+    }
+    
     headers = {
         "Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}",
         "Content-Type": "application/json"
