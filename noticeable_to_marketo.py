@@ -8,7 +8,7 @@ NOTICEABLE_PROJECT_ID = "iNtAqOXXDnStXBh6qJG4"
 # GraphQL Query to Fetch a Single Subscriber (Replace Email)
 query = f"""
 query {{
-    emailSubscription(projectId: "{NOTICEABLE_PROJECT_ID}", email: "test@example.com") {{
+    emailSubscription(projectId: "{NOTICEABLE_PROJECT_ID}", email: "tliu@nzsuperfund.co.nz") {{
         email
         fullName
         createdAt
