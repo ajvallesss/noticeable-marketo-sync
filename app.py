@@ -52,7 +52,6 @@ def get_list_by_id(list_id=1908):
     print(f"❌ List {list_id} not found. Response: {data}")
     return None
 
-
 # Add subscriber to Marketo list
 def add_subscriber_to_list(email):
     """Add a lead to the Marketo Static List by ID (1908)"""
@@ -80,7 +79,6 @@ def add_subscriber_to_list(email):
         print(f"❌ Error adding {email} to List {MARKETO_LIST_ID}. Response: {response_data}")
 
     return response_data
-
 
 # Remove subscriber from Marketo list
 def remove_subscriber_from_list(email):
