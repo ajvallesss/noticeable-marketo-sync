@@ -21,33 +21,13 @@ def get_marketo_access_token():
     else:
         raise Exception("Failed to get Marketo access token")
 
-def get_noticeable_project_id():
-    headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
-    query = """
-    query {
-        project {
-            id
-            name
-        }
-    }
-    """
-    response = requests.post(NOTICEABLE_GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
-
-    print("Noticeable Project ID Response:", response.status_code, response.text)  # Debugging Line
-
-    if response.status_code == 200:
-        project_data = response.json().get("data", {}).get("project", {})
-        return project_data.get("id", None)
-    else:
-        raise Exception(f"Failed to fetch Noticeable Project ID: {response.text}")
-
 
 # Function to fetch Noticeable subscribers
 def get_noticeable_subscribers():
     headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
     query = """
     query {
-        emailSubscription(projectId: "YOUR_PROJECT_ID", email: null) {  
+        emailSubscription(projectId: "iNtAqOXXDnStXBh6qJG4", email: null) {  
             email
             fullName
             unsubscribedAt  
