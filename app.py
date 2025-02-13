@@ -33,39 +33,29 @@ def get_marketo_access_token():
 # Ensure we always have a valid token
 MARKETO_ACCESS_TOKEN = get_marketo_access_token()
 
-def find_list_by_id(target_list_id=1908):
-    """Search through Marketo lists and find the correct list by ID"""
+def get_list_by_id(list_id=1908):
+    """Fetch a specific static list by ID from Marketo"""
     global MARKETO_ACCESS_TOKEN
 
-    offset = 0
-    limit = 200  # Max items per page
+    url = f"{MARKETO_BASE_URL}/rest/asset/v1/staticList/{list_id}.json"
+    headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
 
-    while True:
-        url = f"{MARKETO_BASE_URL}/rest/v1/lists.json"
-        params = {"offset": offset, "maxReturn": limit}
-        headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
+    response = requests.get(url, headers=headers)
+    data = response.json()
 
-        response = requests.get(url, headers=headers, params=params)
-        data = response.json()
-
-        if "result" in data:
-            for item in data["result"]:
-                if item["id"] == target_list_id:
-                    print(f"✅ Found List ID {target_list_id}: {item['name']}")
-                    return item["id"]  # Found the list
-
-        if not data.get("moreResult"):  # If there are no more results, stop
-            print(f"❌ List ID {target_list_id} not found after full pagination.")
-            return None
-
-        offset += limit  # Move to the next batch
+    if "id" in data:
+        print(f"✅ Found List {list_id}: {data.get('name', 'Unknown Name')}")
+        return data  # Return full list data
+    else:
+        print(f"❌ List {list_id} not found. Response: {data}")
+        return None
 
 # Add subscriber to Marketo list
 def add_subscriber_to_list(email):
     """Add lead to the correct Marketo Static List"""
     global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
-    if find_list_by_id(MARKETO_LIST_ID) is None:
+    if get_list_by_id(MARKETO_LIST_ID) is None:
         print("❌ List not found. Cannot add subscriber.")
         return
 
@@ -83,7 +73,7 @@ def remove_subscriber_from_list(email):
     """Remove lead from the Marketo Static List"""
     global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
-    if find_list_by_id(MARKETO_LIST_ID) is None:
+    if get_list_by_id(MARKETO_LIST_ID) is None:
         print("❌ List not found. Cannot remove subscriber.")
         return
 
@@ -120,6 +110,6 @@ def noticeable_webhook():
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "find_list":
-        find_list_by_id()  # This runs when you explicitly call "find_list"
+        get_list_by_id()  # This runs when you explicitly call "find_list"
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
