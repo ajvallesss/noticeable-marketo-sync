@@ -1,3 +1,16 @@
+# Ignore Python bytecode
 __pycache__/
 *.pyc
+*.pyo
+
+# Ignore virtual environments
+venv/
 .env
+
+# Ignore IDE/editor settings
+*.vscode/
+*.idea/
+.DS_Store
+
+# Ignore Heroku-specific files
+*.log
