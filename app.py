@@ -9,7 +9,7 @@ NOTICEABLE_API_KEY = os.getenv("NOTICEABLE_API_KEY")
 MARKETO_CLIENT_ID = os.getenv("MARKETO_CLIENT_ID")
 MARKETO_CLIENT_SECRET = os.getenv("MARKETO_CLIENT_SECRET")
 MARKETO_BASE_URL = os.getenv("MARKETO_BASE_URL", "https://841-CLM-681.mktorest.com")
-MARKETO_LIST_ID = os.getenv("MARKETO_LIST_ID", "1907")  # Default to 1907
+MARKETO_LIST_ID = os.getenv("MARKETO_LIST_ID", "1908")  # Default to 1908
 MARKETO_ACCESS_TOKEN = None  # Will be set dynamically
 
 # Function to refresh Marketo access token
