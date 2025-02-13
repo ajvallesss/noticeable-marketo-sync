@@ -55,21 +55,32 @@ def get_list_by_id(list_id=1908):
 
 # Add subscriber to Marketo list
 def add_subscriber_to_list(email):
-    """Add lead to the correct Marketo Static List"""
-    global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
-
-    if get_list_by_id(MARKETO_LIST_ID) is None:
-        print("❌ List not found. Cannot add subscriber.")
-        return
+    """Add a lead to the Marketo Static List by ID (1908)"""
+    global MARKETO_ACCESS_TOKEN
 
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
-    payload = {"input": [{"email": email}]}
+    payload = {
+        "input": [{"email": email}]
+    }
     
-    headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
     print(f"📤 Sending request to Marketo: {url}")
+    print(f"📨 Payload: {payload}")
+
     response = requests.post(url, json=payload, headers=headers)
-    print(f"✅ Add to List Response: {response.json()}")
+    response_data = response.json()
+
+    if response.status_code == 200 and response_data.get("success"):
+        print(f"✅ Successfully added {email} to List {MARKETO_LIST_ID}")
+    else:
+        print(f"❌ Error adding {email} to List {MARKETO_LIST_ID}. Response: {response_data}")
+
+    return response_data
+
 
 # Remove subscriber from Marketo list
 def remove_subscriber_from_list(email):
