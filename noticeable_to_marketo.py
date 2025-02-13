@@ -1,100 +1,31 @@
 import requests
-import json
-import os
 
-# Marketo API Credentials
-MARKETO_BASE_URL = os.getenv("MARKETO_BASE_URL")
-MARKETO_CLIENT_ID = os.getenv("MARKETO_CLIENT_ID")
-MARKETO_CLIENT_SECRET = os.getenv("MARKETO_CLIENT_SECRET")
-MARKETO_LIST_ID = os.getenv("MARKETO_LIST_ID")  # Static list ID
-
-# Noticeable API Credentials
-NOTICEABLE_API_KEY = os.getenv("NOTICEABLE_API_KEY")
+# Noticeable API Details
+NOTICEABLE_API_KEY = "o74oUVnnfAlGV3E4C8b8"
 NOTICEABLE_GRAPHQL_ENDPOINT = "https://api.noticeable.io/graphql"
-NOTICEABLE_PROJECT_ID = "iNtAqOXXDnStXBh6qJG4"  # Hardcoded Project ID
 
-# Function to get Marketo access token
-def get_marketo_access_token():
-    url = f"{MARKETO_BASE_URL}/identity/oauth/token?grant_type=client_credentials&client_id={MARKETO_CLIENT_ID}&client_secret={MARKETO_CLIENT_SECRET}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()["access_token"]
-    else:
-        raise Exception("Failed to get Marketo access token")
-
-# Function to fetch Noticeable subscribers
-def get_noticeable_subscribers():
-    headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
-    query = f"""
-    query {{
-        emailSubscriptions(projectId: "{NOTICEABLE_PROJECT_ID}") {{  
-            edges {{
-                node {{
-                    email
-                    fullName
-                    createdAt
-                    status
-                    isArchived
-                    origin
-                }}
-            }}
-        }}
-    }}
-    """
-    response = requests.post(NOTICEABLE_GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
-
-    print("Noticeable API Response:", response.status_code, response.text)  # Debugging Line
-
-    if response.status_code == 200:
-        return response.json().get("data", {}).get("emailSubscriptions", {}).get("edges", [])
-    else:
-        raise Exception(f"Failed to fetch Noticeable subscribers: {response.text}")
-
-# Function to update Marketo static list
-def update_marketo_list(subscribers, remove=False):
-    if not subscribers:
-        return "No updates needed."
-    
-    access_token = get_marketo_access_token()
-    endpoint = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
-    if remove:
-        endpoint = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads/delete.json"
-    
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
+# GraphQL Query to Check Available Fields
+query = """
+query {
+    __schema {
+        queryType {
+            fields {
+                name
+            }
+        }
     }
-    payload = {"input": [{
-        "email": sub["node"].get("email"),
-        "fullName": sub["node"].get("fullName", ""),
-        "status": sub["node"].get("status", ""),
-        "createdAt": sub["node"].get("createdAt", ""),
-        "isArchived": sub["node"].get("isArchived", ""),
-        "origin": sub["node"].get("origin", "")
-    } for sub in subscribers]}
-    
-    response = requests.post(endpoint, headers=headers, json=payload)
-    return response.json()
+}
+"""
 
-# Main execution
-def main():
-    print("Fetching subscribers from Noticeable...")
-    subscribers = get_noticeable_subscribers()
-    
-    new_subscribers = [s for s in subscribers if not s["node"].get("isArchived")]
-    unsubscribers = [s for s in subscribers if s["node"].get("isArchived")]
-    
-    if new_subscribers:
-        print("Adding new subscribers to Marketo...")
-        add_response = update_marketo_list(new_subscribers)
-        print("Add Response:", add_response)
-    
-    if unsubscribers:
-        print("Removing unsubscribed users from Marketo...")
-        remove_response = update_marketo_list(unsubscribers, remove=True)
-        print("Remove Response:", remove_response)
-    
-    print("Sync Complete.")
+# Headers for Authorization
+headers = {
+    "Authorization": f"Apikey {NOTICEABLE_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-if __name__ == "__main__":
-    main()
+# Make API Request
+response = requests.post(NOTICEABLE_GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
+
+# Output Response
+print("Status Code:", response.status_code)
+print("Response:", response.json())
