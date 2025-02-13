@@ -27,15 +27,11 @@ def get_noticeable_subscribers():
     headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
     query = f"""
     query {{
-        emailSubscriptions(projectId: "{NOTICEABLE_PROJECT_ID}", first: 100) {{  
-            edges {{
-                node {{
-                    email
-                    fullName
-                    createdAt
-                    status
-                }}
-            }}
+        EmailSubscription(projectId: "{NOTICEABLE_PROJECT_ID}") {{  
+            email
+            fullName
+            createdAt
+            status
         }}
     }}
     """
@@ -44,7 +40,7 @@ def get_noticeable_subscribers():
     print("Noticeable API Response:", response.status_code, response.text)  # Debugging Line
 
     if response.status_code == 200:
-        return response.json().get("data", {}).get("emailSubscriptions", {}).get("edges", [])
+        return response.json().get("data", {}).get("EmailSubscription", [])
     else:
         raise Exception(f"Failed to fetch Noticeable subscribers: {response.text}")
 
@@ -63,10 +59,10 @@ def update_marketo_list(subscribers, remove=False):
         "Content-Type": "application/json"
     }
     payload = {"input": [{
-        "email": sub["node"]["email"],
-        "fullName": sub["node"].get("fullName", ""),
-        "status": sub["node"].get("status", ""),
-        "createdAt": sub["node"].get("createdAt", "")
+        "email": sub.get("email"),
+        "fullName": sub.get("fullName", ""),
+        "status": sub.get("status", ""),
+        "createdAt": sub.get("createdAt", "")
     } for sub in subscribers]}
     
     response = requests.post(endpoint, headers=headers, json=payload)
@@ -77,8 +73,8 @@ def main():
     print("Fetching subscribers from Noticeable...")
     subscribers = get_noticeable_subscribers()
     
-    new_subscribers = [s for s in subscribers if not s["node"].get("unsubscribedAt")]
-    unsubscribers = [s for s in subscribers if s["node"].get("unsubscribedAt")]
+    new_subscribers = [s for s in subscribers if not s.get("unsubscribedAt")]
+    unsubscribers = [s for s in subscribers if s.get("unsubscribedAt")]
     
     if new_subscribers:
         print("Adding new subscribers to Marketo...")
