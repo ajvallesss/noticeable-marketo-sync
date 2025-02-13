@@ -26,11 +26,11 @@ def get_noticeable_subscribers():
     headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
     query = """
     query {
-        projectSubscribers(first: 100) {  # Change 'subscribers' to 'projectSubscribers'
+        subscribers(first: 100) {
             edges {
                 node {
                     email
-                    unsubscribedAt  # If the API does not have 'isUnsubscribed', use this field
+                    isUnsubscribed
                 }
             }
         }
@@ -41,10 +41,32 @@ def get_noticeable_subscribers():
     print("Noticeable API Response:", response.status_code, response.text)  # Debugging Line
 
     if response.status_code == 200:
-        return response.json().get("data", {}).get("projectSubscribers", {}).get("edges", [])
+        return response.json().get("data", {}).get("subscribers", {}).get("edges", [])
     else:
         raise Exception(f"Failed to fetch Noticeable subscribers: {response.text}")
 
+# Function to discover available fields in Noticeable API
+def discover_available_fields():
+    headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
+    query = """
+    query {
+        __schema {
+            queryType {
+                fields {
+                    name
+                }
+            }
+        }
+    }
+    """
+    response = requests.post(NOTICEABLE_GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
+
+    print("Available Fields Response:", response.status_code, response.text)  # Debugging Line
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Failed to fetch available fields: {response.text}")
 
 # Function to update Marketo static list
 def update_marketo_list(subscribers, remove=False):
@@ -67,6 +89,10 @@ def update_marketo_list(subscribers, remove=False):
 
 # Main execution
 def main():
+    print("Fetching available fields from Noticeable API...")
+    available_fields = discover_available_fields()
+    print("Available Fields in Noticeable API:", json.dumps(available_fields, indent=2))
+    
     print("Fetching subscribers from Noticeable...")
     subscribers = get_noticeable_subscribers()
     
