@@ -1,14 +1,14 @@
 import requests
 
 # Noticeable API Details
-NOTICEABLE_API_KEY = "o74oUVnnfAlGV3E4C8b8"
+NOTICEABLE_API_KEY = "YOUR_API_KEY_HERE"
 NOTICEABLE_GRAPHQL_ENDPOINT = "https://api.noticeable.io/graphql"
-NOTICEABLE_PROJECT_ID = "iNtAqOXXDnStXBh6qJG4"  # If required
+NOTICEABLE_PROJECT_ID = "YOUR_PROJECT_ID_HERE"
 
-# GraphQL Query to Fetch Subscribers (Testing)
+# GraphQL Query to Fetch a Single Subscriber (Replace Email)
 query = f"""
 query {{
-    emailSubscription(email: "test@example.com") {{
+    emailSubscription(projectId: "{NOTICEABLE_PROJECT_ID}", email: "test@example.com") {{
         email
         fullName
         createdAt
