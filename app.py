@@ -11,7 +11,7 @@ MARKETO_CLIENT_ID = os.getenv("MARKETO_CLIENT_ID")
 MARKETO_CLIENT_SECRET = os.getenv("MARKETO_CLIENT_SECRET")
 MARKETO_BASE_URL = os.getenv("MARKETO_BASE_URL", "https://841-CLM-681.mktorest.com")
 MARKETO_ACCESS_TOKEN = None  # Will be set dynamically
-MARKETO_LIST_ID = None  # Found dynamically
+MARKETO_LIST_ID = 1908  # Searching for this list ID
 
 # Function to refresh Marketo access token
 def get_marketo_access_token():
@@ -33,9 +33,9 @@ def get_marketo_access_token():
 # Ensure we always have a valid token
 MARKETO_ACCESS_TOKEN = get_marketo_access_token()
 
-def find_list_id(target_list_name="Noticeable Subscriber List"):
-    """Search through Marketo lists and find the correct list ID by name"""
-    global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
+def find_list_by_id(target_list_id=1908):
+    """Search through Marketo lists and find the correct list by ID"""
+    global MARKETO_ACCESS_TOKEN
 
     offset = 0
     limit = 200  # Max items per page
@@ -50,13 +50,12 @@ def find_list_id(target_list_name="Noticeable Subscriber List"):
 
         if "result" in data:
             for item in data["result"]:
-                if item["name"] == target_list_name:
-                    MARKETO_LIST_ID = item["id"]
-                    print(f"✅ Found List '{target_list_name}' with ID: {MARKETO_LIST_ID}")
-                    return MARKETO_LIST_ID  # Found the list
+                if item["id"] == target_list_id:
+                    print(f"✅ Found List ID {target_list_id}: {item['name']}")
+                    return item["id"]  # Found the list
 
         if not data.get("moreResult"):  # If there are no more results, stop
-            print(f"❌ List '{target_list_name}' not found after full pagination.")
+            print(f"❌ List ID {target_list_id} not found after full pagination.")
             return None
 
         offset += limit  # Move to the next batch
@@ -66,11 +65,9 @@ def add_subscriber_to_list(email):
     """Add lead to the correct Marketo Static List"""
     global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
-    if MARKETO_LIST_ID is None:
-        print("🔍 Searching for List ID...")
-        if find_list_id() is None:
-            print("❌ List not found. Cannot add subscriber.")
-            return
+    if find_list_by_id(MARKETO_LIST_ID) is None:
+        print("❌ List not found. Cannot add subscriber.")
+        return
 
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
     payload = {"input": [{"email": email}]}
@@ -86,11 +83,9 @@ def remove_subscriber_from_list(email):
     """Remove lead from the Marketo Static List"""
     global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
-    if MARKETO_LIST_ID is None:
-        print("🔍 Searching for List ID...")
-        if find_list_id() is None:
-            print("❌ List not found. Cannot remove subscriber.")
-            return
+    if find_list_by_id(MARKETO_LIST_ID) is None:
+        print("❌ List not found. Cannot remove subscriber.")
+        return
 
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
     payload = {"input": [{"email": email}], "action": "remove"}
@@ -125,6 +120,6 @@ def noticeable_webhook():
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "find_list":
-        find_list_id()  # This runs when you explicitly call "find_list"
+        find_list_by_id()  # This runs when you explicitly call "find_list"
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
