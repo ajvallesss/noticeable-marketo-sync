@@ -43,12 +43,15 @@ def get_list_by_id(list_id=1908):
     response = requests.get(url, headers=headers)
     data = response.json()
 
-    if "id" in data:
-        print(f"✅ Found List {list_id}: {data.get('name', 'Unknown Name')}")
-        return data  # Return full list data
-    else:
-        print(f"❌ List {list_id} not found. Response: {data}")
-        return None
+    if "result" in data and isinstance(data["result"], list):
+        for lst in data["result"]:
+            if lst["id"] == list_id:
+                print(f"✅ Found List {list_id}: {lst['name']}")
+                return lst  # Return full list data
+
+    print(f"❌ List {list_id} not found. Response: {data}")
+    return None
+
 
 # Add subscriber to Marketo list
 def add_subscriber_to_list(email):
