@@ -10,7 +10,8 @@ NOTICEABLE_API_KEY = os.getenv("NOTICEABLE_API_KEY")
 MARKETO_CLIENT_ID = os.getenv("MARKETO_CLIENT_ID")
 MARKETO_CLIENT_SECRET = os.getenv("MARKETO_CLIENT_SECRET")
 MARKETO_BASE_URL = os.getenv("MARKETO_BASE_URL", "https://841-CLM-681.mktorest.com")
-MARKETO_LIST_ID = os.getenv("MARKETO_LIST_ID", "1908")  # Default to 1908
+MARKETO_LIST_NAME = os.getenv("MARKETO_LIST_NAME", "Noticeable Subscriber List")  # Default list name
+MARKETO_LIST_ID = None  # Will be determined dynamically
 MARKETO_ACCESS_TOKEN = None  # Will be set dynamically
 
 # Function to refresh Marketo access token
@@ -33,14 +34,16 @@ def get_marketo_access_token():
 # Ensure we always have a valid token
 MARKETO_ACCESS_TOKEN = get_marketo_access_token()
 
-def find_list_1908():
-    """Searches through Marketo lists until it finds ID 1908"""
-    global MARKETO_ACCESS_TOKEN
+def find_list_id():
+    """Searches through Marketo static lists until it finds the target list"""
+    global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
-    next_page_token = None
+    offset = 0
+    batch_size = 200  # Maximum allowed batch size
+
     while True:
-        url = f"{MARKETO_BASE_URL}/rest/v1/lists.json"
-        params = {"nextPageToken": next_page_token} if next_page_token else {}
+        url = f"{MARKETO_BASE_URL}/rest/asset/v1/staticLists.json"
+        params = {"offset": offset, "maxReturn": batch_size}
         headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
 
         response = requests.get(url, headers=headers, params=params)
@@ -48,23 +51,30 @@ def find_list_1908():
 
         if "result" in data:
             for item in data["result"]:
-                if item["id"] == int(MARKETO_LIST_ID):  # Ensures we're working with an integer
-                    print(f"✅ Found List 1908: {item['name']}")
-                    return True  # Found the list, we can continue operations
+                if item["name"] == MARKETO_LIST_NAME:  # Match by list name
+                    MARKETO_LIST_ID = item["id"]
+                    print(f"✅ Found List '{MARKETO_LIST_NAME}' with ID {MARKETO_LIST_ID}")
+                    return True  # Found the list, store its ID
 
-        if "nextPageToken" in data:
-            next_page_token = data["nextPageToken"]
+            # If the number of results is less than batch_size, we've reached the end
+            if len(data["result"]) < batch_size:
+                break
         else:
-            print("❌ List 1908 not found after full pagination.")
-            return False  # List 1908 was not found
+            print(f"❌ Error retrieving lists: {data.get('errors', 'Unknown error')}")
+            break
+
+        offset += batch_size  # Move to the next batch
+
+    print(f"❌ List '{MARKETO_LIST_NAME}' not found after full pagination.")
+    return False  # List was not found
 
 # Add subscriber to Marketo list
 def add_subscriber_to_list(email):
     """Add lead to the correct Marketo Static List"""
     global MARKETO_ACCESS_TOKEN
 
-    if not find_list_1908():
-        print("❌ List 1908 not found. Cannot add subscriber.")
+    if not MARKETO_LIST_ID and not find_list_id():
+        print(f"❌ List '{MARKETO_LIST_NAME}' not found. Cannot add subscriber.")
         return
 
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
@@ -96,8 +106,8 @@ def remove_subscriber_from_list(email):
     """Remove lead from the Marketo Static List"""
     global MARKETO_ACCESS_TOKEN
 
-    if not find_list_1908():
-        print("❌ List 1908 not found. Cannot remove subscriber.")
+    if not MARKETO_LIST_ID and not find_list_id():
+        print(f"❌ List '{MARKETO_LIST_NAME}' not found. Cannot remove subscriber.")
         return
 
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
