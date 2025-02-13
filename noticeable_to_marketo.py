@@ -5,21 +5,17 @@ NOTICEABLE_API_KEY = "o74oUVnnfAlGV3E4C8b8"
 NOTICEABLE_GRAPHQL_ENDPOINT = "https://api.noticeable.io/graphql"
 NOTICEABLE_PROJECT_ID = "iNtAqOXXDnStXBh6qJG4"
 
-# GraphQL Query to Fetch All Subscribers
+# GraphQL Query to Fetch a Single Subscriber (Replace Email)
 query = f"""
 query {{
-    emailSubscriptions(projectId: "{NOTICEABLE_PROJECT_ID}") {{
-        edges {{
-            node {{
-                email
-                fullName
-                createdAt
-                status
-                isArchived
-                origin
-                updatedAt
-            }}
-        }}
+    emailSubscription(projectId: "{NOTICEABLE_PROJECT_ID}", email: "tliu@nzsuperfund.co.nz") {{
+        email
+        fullName
+        createdAt
+        status
+        isArchived
+        origin
+        updatedAt
     }}
 }}
 """
