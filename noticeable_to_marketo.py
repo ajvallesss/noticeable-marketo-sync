@@ -11,6 +11,7 @@ MARKETO_LIST_ID = os.getenv("MARKETO_LIST_ID")  # Static list ID
 # Noticeable API Credentials
 NOTICEABLE_API_KEY = os.getenv("NOTICEABLE_API_KEY")
 NOTICEABLE_GRAPHQL_ENDPOINT = "https://api.noticeable.io/graphql"
+NOTICEABLE_PROJECT_ID = "iNtAqOXXDnStXBh6qJG4"  # Hardcoded Project ID
 
 # Function to get Marketo access token
 def get_marketo_access_token():
@@ -21,27 +22,29 @@ def get_marketo_access_token():
     else:
         raise Exception("Failed to get Marketo access token")
 
-
 # Function to fetch Noticeable subscribers
 def get_noticeable_subscribers():
     headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
-    query = """
-    query {
-        emailSubscription(projectId: "iNtAqOXXDnStXBh6qJG4", email: null) {  
-            email
-            fullName
-            unsubscribedAt  
-            createdAt
-            status
-        }
-    }
+    query = f"""
+    query {{
+        emailSubscriptions(projectId: "{NOTICEABLE_PROJECT_ID}", first: 100) {{  
+            edges {{
+                node {{
+                    email
+                    fullName
+                    createdAt
+                    status
+                }}
+            }}
+        }}
+    }}
     """
     response = requests.post(NOTICEABLE_GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
 
     print("Noticeable API Response:", response.status_code, response.text)  # Debugging Line
 
     if response.status_code == 200:
-        return response.json().get("data", {}).get("emailSubscription", [])
+        return response.json().get("data", {}).get("emailSubscriptions", {}).get("edges", [])
     else:
         raise Exception(f"Failed to fetch Noticeable subscribers: {response.text}")
 
