@@ -26,11 +26,14 @@ def get_noticeable_subscribers():
     headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
     query = """
     query {
-        subscribers(first: 100) {
+        emailSubscription(first: 100) {
             edges {
                 node {
                     email
-                    isUnsubscribed
+                    fullName
+                    unsubscribedAt  
+                    createdAt
+                    status
                 }
             }
         }
@@ -41,32 +44,9 @@ def get_noticeable_subscribers():
     print("Noticeable API Response:", response.status_code, response.text)  # Debugging Line
 
     if response.status_code == 200:
-        return response.json().get("data", {}).get("subscribers", {}).get("edges", [])
+        return response.json().get("data", {}).get("emailSubscription", {}).get("edges", [])
     else:
         raise Exception(f"Failed to fetch Noticeable subscribers: {response.text}")
-
-# Function to discover available fields in Noticeable API
-def discover_available_fields():
-    headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
-    query = """
-    query {
-        __schema {
-            queryType {
-                fields {
-                    name
-                }
-            }
-        }
-    }
-    """
-    response = requests.post(NOTICEABLE_GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
-
-    print("Available Fields Response:", response.status_code, response.text)  # Debugging Line
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Failed to fetch available fields: {response.text}")
 
 # Function to update Marketo static list
 def update_marketo_list(subscribers, remove=False):
@@ -82,22 +62,23 @@ def update_marketo_list(subscribers, remove=False):
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
-    payload = {"input": [{"email": sub["node"]["email"]} for sub in subscribers]}
+    payload = {"input": [{
+        "email": sub["node"]["email"],
+        "fullName": sub["node"].get("fullName", ""),
+        "status": sub["node"].get("status", ""),
+        "createdAt": sub["node"].get("createdAt", "")
+    } for sub in subscribers]}
     
     response = requests.post(endpoint, headers=headers, json=payload)
     return response.json()
 
 # Main execution
 def main():
-    print("Fetching available fields from Noticeable API...")
-    available_fields = discover_available_fields()
-    print("Available Fields in Noticeable API:", json.dumps(available_fields, indent=2))
-    
     print("Fetching subscribers from Noticeable...")
     subscribers = get_noticeable_subscribers()
     
-    new_subscribers = [s for s in subscribers if not s["node"]["isUnsubscribed"]]
-    unsubscribers = [s for s in subscribers if s["node"]["isUnsubscribed"]]
+    new_subscribers = [s for s in subscribers if not s["node"].get("unsubscribedAt")]
+    unsubscribers = [s for s in subscribers if s["node"].get("unsubscribedAt")]
     
     if new_subscribers:
         print("Adding new subscribers to Marketo...")
