@@ -3,18 +3,21 @@ import requests
 # Noticeable API Details
 NOTICEABLE_API_KEY = "o74oUVnnfAlGV3E4C8b8"
 NOTICEABLE_GRAPHQL_ENDPOINT = "https://api.noticeable.io/graphql"
+NOTICEABLE_PROJECT_ID = "YOUR_PROJECT_ID_HERE"  # If required
 
-# GraphQL Query to Check Available Fields
-query = """
-query {
-    __schema {
-        queryType {
-            fields {
-                name
-            }
-        }
-    }
-}
+# GraphQL Query to Fetch Subscribers (Testing)
+query = f"""
+query {{
+    emailSubscription(email: "test@example.com") {{
+        email
+        fullName
+        createdAt
+        status
+        isArchived
+        origin
+        updatedAt
+    }}
+}}
 """
 
 # Headers for Authorization
