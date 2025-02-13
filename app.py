@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 import requests
-import time
+import sys
 
 app = Flask(__name__)
 
@@ -10,9 +10,8 @@ NOTICEABLE_API_KEY = os.getenv("NOTICEABLE_API_KEY")
 MARKETO_CLIENT_ID = os.getenv("MARKETO_CLIENT_ID")
 MARKETO_CLIENT_SECRET = os.getenv("MARKETO_CLIENT_SECRET")
 MARKETO_BASE_URL = os.getenv("MARKETO_BASE_URL", "https://841-CLM-681.mktorest.com")
-MARKETO_LIST_NAME = os.getenv("MARKETO_LIST_NAME", "Noticeable Subscriber List")  # Default list name
-MARKETO_LIST_ID = None  # Will be determined dynamically
 MARKETO_ACCESS_TOKEN = None  # Will be set dynamically
+MARKETO_LIST_ID = None  # Found dynamically
 
 # Function to refresh Marketo access token
 def get_marketo_access_token():
@@ -25,7 +24,7 @@ def get_marketo_access_token():
 
     if "access_token" in data:
         MARKETO_ACCESS_TOKEN = data["access_token"]
-        print(f"🔄 Refreshed Marketo Access Token: {MARKETO_ACCESS_TOKEN[:6]}...")  # Masked for security
+        print(f"🔄 Refreshed Marketo Access Token: {MARKETO_ACCESS_TOKEN[:6]}...")
         return MARKETO_ACCESS_TOKEN
     else:
         print(f"❌ Error fetching Marketo token: {data}")
@@ -34,16 +33,16 @@ def get_marketo_access_token():
 # Ensure we always have a valid token
 MARKETO_ACCESS_TOKEN = get_marketo_access_token()
 
-def find_list_id():
-    """Searches through Marketo static lists until it finds the target list"""
+def find_list_id(target_list_name="Noticeable Subscriber List"):
+    """Search through Marketo lists and find the correct list ID by name"""
     global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
     offset = 0
-    batch_size = 200  # Maximum allowed batch size
+    limit = 200  # Max items per page
 
     while True:
-        url = f"{MARKETO_BASE_URL}/rest/asset/v1/staticLists.json"
-        params = {"offset": offset, "maxReturn": batch_size}
+        url = f"{MARKETO_BASE_URL}/rest/v1/lists.json"
+        params = {"offset": offset, "maxReturn": limit}
         headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
 
         response = requests.get(url, headers=headers, params=params)
@@ -51,31 +50,27 @@ def find_list_id():
 
         if "result" in data:
             for item in data["result"]:
-                if item["name"] == MARKETO_LIST_NAME:  # Match by list name
+                if item["name"] == target_list_name:
                     MARKETO_LIST_ID = item["id"]
-                    print(f"✅ Found List '{MARKETO_LIST_NAME}' with ID {MARKETO_LIST_ID}")
-                    return True  # Found the list, store its ID
+                    print(f"✅ Found List '{target_list_name}' with ID: {MARKETO_LIST_ID}")
+                    return MARKETO_LIST_ID  # Found the list
 
-            # If the number of results is less than batch_size, we've reached the end
-            if len(data["result"]) < batch_size:
-                break
-        else:
-            print(f"❌ Error retrieving lists: {data.get('errors', 'Unknown error')}")
-            break
+        if not data.get("moreResult"):  # If there are no more results, stop
+            print(f"❌ List '{target_list_name}' not found after full pagination.")
+            return None
 
-        offset += batch_size  # Move to the next batch
-
-    print(f"❌ List '{MARKETO_LIST_NAME}' not found after full pagination.")
-    return False  # List was not found
+        offset += limit  # Move to the next batch
 
 # Add subscriber to Marketo list
 def add_subscriber_to_list(email):
     """Add lead to the correct Marketo Static List"""
-    global MARKETO_ACCESS_TOKEN
+    global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
-    if not MARKETO_LIST_ID and not find_list_id():
-        print(f"❌ List '{MARKETO_LIST_NAME}' not found. Cannot add subscriber.")
-        return
+    if MARKETO_LIST_ID is None:
+        print("🔍 Searching for List ID...")
+        if find_list_id() is None:
+            print("❌ List not found. Cannot add subscriber.")
+            return
 
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
     payload = {"input": [{"email": email}]}
@@ -83,32 +78,19 @@ def add_subscriber_to_list(email):
     headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
 
     print(f"📤 Sending request to Marketo: {url}")
-    print(f"📨 Payload: {payload}")
-
     response = requests.post(url, json=payload, headers=headers)
-    response_data = response.json()
-
-    # If Marketo returns an invalid list ID error, log it
-    if "errors" in response_data:
-        print(f"❌ Error adding to list: {response_data['errors']}")
-
-    # If token is expired, refresh it and retry once
-    if "errors" in response_data and response_data["errors"][0]["code"] in ["601", "602"]:
-        print("🔄 Token expired. Refreshing and retrying...")
-        MARKETO_ACCESS_TOKEN = get_marketo_access_token()
-        headers["Authorization"] = f"Bearer {MARKETO_ACCESS_TOKEN}"
-        response = requests.post(url, json=payload, headers=headers)
-
     print(f"✅ Add to List Response: {response.json()}")
 
 # Remove subscriber from Marketo list
 def remove_subscriber_from_list(email):
     """Remove lead from the Marketo Static List"""
-    global MARKETO_ACCESS_TOKEN
+    global MARKETO_ACCESS_TOKEN, MARKETO_LIST_ID
 
-    if not MARKETO_LIST_ID and not find_list_id():
-        print(f"❌ List '{MARKETO_LIST_NAME}' not found. Cannot remove subscriber.")
-        return
+    if MARKETO_LIST_ID is None:
+        print("🔍 Searching for List ID...")
+        if find_list_id() is None:
+            print("❌ List not found. Cannot remove subscriber.")
+            return
 
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
     payload = {"input": [{"email": email}], "action": "remove"}
@@ -117,31 +99,7 @@ def remove_subscriber_from_list(email):
 
     print(f"📤 Removing lead from Marketo list: {url}")
     response = requests.post(url, json=payload, headers=headers)
-    response_data = response.json()
-
-    # If token is expired, refresh it and retry once
-    if "errors" in response_data and response_data["errors"][0]["code"] in ["601", "602"]:
-        print("🔄 Token expired. Refreshing and retrying...")
-        MARKETO_ACCESS_TOKEN = get_marketo_access_token()
-        headers["Authorization"] = f"Bearer {MARKETO_ACCESS_TOKEN}"
-        response = requests.post(url, json=payload, headers=headers)
-
     print(f"✅ Remove from List Response: {response.json()}")
-
-# Fetch latest Noticeable release notes
-def fetch_latest_noticeable_update():
-    """Retrieve the latest product update from Noticeable"""
-    url = "https://api.noticeable.io/v1/projects/YOUR_PROJECT_ID/timelines"  # Replace YOUR_PROJECT_ID
-    headers = {"Authorization": f"Bearer {NOTICEABLE_API_KEY}"}
-    
-    response = requests.get(url, headers=headers)
-    data = response.json()
-
-    if "timelines" in data and len(data["timelines"]) > 0:
-        latest_update = data["timelines"][0]["content"]["blocks"]
-        return "\n".join([block["text"] for block in latest_update if "text" in block])
-    else:
-        return "No recent updates available."
 
 @app.route("/", methods=["GET"])
 def home():
@@ -166,4 +124,7 @@ def noticeable_webhook():
     return jsonify({"status": "success"})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    if len(sys.argv) > 1 and sys.argv[1] == "find_list":
+        find_list_id()  # This runs when you explicitly call "find_list"
+    else:
+        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
