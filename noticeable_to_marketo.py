@@ -3,7 +3,7 @@ import requests
 # Noticeable API Details
 NOTICEABLE_API_KEY = "o74oUVnnfAlGV3E4C8b8"
 NOTICEABLE_GRAPHQL_ENDPOINT = "https://api.noticeable.io/graphql"
-NOTICEABLE_PROJECT_ID = "YOUR_PROJECT_ID_HERE"  # If required
+NOTICEABLE_PROJECT_ID = "iNtAqOXXDnStXBh6qJG4"  # If required
 
 # GraphQL Query to Fetch Subscribers (Testing)
 query = f"""
