@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 import requests
+import time
 
 app = Flask(__name__)
 
@@ -32,20 +33,44 @@ def get_marketo_access_token():
 # Ensure we always have a valid token
 MARKETO_ACCESS_TOKEN = get_marketo_access_token()
 
+def find_list_1908():
+    """Searches through Marketo lists until it finds ID 1908"""
+    global MARKETO_ACCESS_TOKEN
+
+    next_page_token = None
+    while True:
+        url = f"{MARKETO_BASE_URL}/rest/v1/lists.json"
+        params = {"nextPageToken": next_page_token} if next_page_token else {}
+        headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
+
+        response = requests.get(url, headers=headers, params=params)
+        data = response.json()
+
+        if "result" in data:
+            for item in data["result"]:
+                if item["id"] == int(MARKETO_LIST_ID):  # Ensures we're working with an integer
+                    print(f"✅ Found List 1908: {item['name']}")
+                    return True  # Found the list, we can continue operations
+
+        if "nextPageToken" in data:
+            next_page_token = data["nextPageToken"]
+        else:
+            print("❌ List 1908 not found after full pagination.")
+            return False  # List 1908 was not found
+
 # Add subscriber to Marketo list
 def add_subscriber_to_list(email):
     """Add lead to the correct Marketo Static List"""
     global MARKETO_ACCESS_TOKEN
 
+    if not find_list_1908():
+        print("❌ List 1908 not found. Cannot add subscriber.")
+        return
+
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
-    payload = {
-        "input": [{"email": email}]
-    }
+    payload = {"input": [{"email": email}]}
     
-    headers = {
-        "Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
 
     print(f"📤 Sending request to Marketo: {url}")
     print(f"📨 Payload: {payload}")
@@ -66,22 +91,19 @@ def add_subscriber_to_list(email):
 
     print(f"✅ Add to List Response: {response.json()}")
 
-
 # Remove subscriber from Marketo list
 def remove_subscriber_from_list(email):
     """Remove lead from the Marketo Static List"""
     global MARKETO_ACCESS_TOKEN
 
+    if not find_list_1908():
+        print("❌ List 1908 not found. Cannot remove subscriber.")
+        return
+
     url = f"{MARKETO_BASE_URL}/rest/v1/lists/{MARKETO_LIST_ID}/leads.json"
-    payload = {
-        "input": [{"email": email}],
-        "action": "remove"
-    }
+    payload = {"input": [{"email": email}], "action": "remove"}
     
-    headers = {
-        "Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}", "Content-Type": "application/json"}
 
     print(f"📤 Removing lead from Marketo list: {url}")
     response = requests.post(url, json=payload, headers=headers)
@@ -111,26 +133,6 @@ def fetch_latest_noticeable_update():
     else:
         return "No recent updates available."
 
-# Update Marketo Program Token with Noticeable release notes
-def update_marketo_program_token(content):
-    """Update Marketo email token with Noticeable release notes"""
-    global MARKETO_ACCESS_TOKEN
-
-    url = f"{MARKETO_BASE_URL}/rest/asset/v1/program/1234/tokens.json"  # Replace 1234 with your program ID
-    payload = {
-        "name": "product_update",
-        "type": "text",
-        "value": content
-    }
-    
-    headers = {
-        "Authorization": f"Bearer {MARKETO_ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    print(f"✅ Marketo Token Update Response: {response.json()}")
-
 @app.route("/", methods=["GET"])
 def home():
     return "Noticeable-Marketo Sync is Running!"
@@ -150,11 +152,6 @@ def noticeable_webhook():
         email = data["data"]["email"]
         print(f"🔴 Subscriber opted out: {email}")
         remove_subscriber_from_list(email)
-
-    elif event_type == "timeline.published":
-        print("📝 New product update detected!")
-        latest_update = fetch_latest_noticeable_update()
-        update_marketo_program_token(latest_update)
 
     return jsonify({"status": "success"})
 
