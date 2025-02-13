@@ -23,7 +23,7 @@ def get_marketo_access_token():
 
 # Function to fetch Noticeable subscribers
 def get_noticeable_subscribers():
-    headers = {"Authorization": f"Bearer {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
     query = """
     query {
         subscribers(first: 100) {
@@ -37,10 +37,13 @@ def get_noticeable_subscribers():
     }
     """
     response = requests.post(NOTICEABLE_GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
+
+    print("Noticeable API Response:", response.status_code, response.text)  # Debugging Line
+
     if response.status_code == 200:
-        return response.json()["data"]["subscribers"]["edges"]
+        return response.json().get("data", {}).get("subscribers", {}).get("edges", [])
     else:
-        raise Exception("Failed to fetch Noticeable subscribers")
+        raise Exception(f"Failed to fetch Noticeable subscribers: {response.text}")
 
 # Function to update Marketo static list
 def update_marketo_list(subscribers, remove=False):
