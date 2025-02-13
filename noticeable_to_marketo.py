@@ -26,11 +26,11 @@ def get_noticeable_subscribers():
     headers = {"Authorization": f"Apikey {NOTICEABLE_API_KEY}", "Content-Type": "application/json"}
     query = """
     query {
-        subscribers(first: 100) {
+        projectSubscribers(first: 100) {  # Change 'subscribers' to 'projectSubscribers'
             edges {
                 node {
                     email
-                    isUnsubscribed
+                    unsubscribedAt  # If the API does not have 'isUnsubscribed', use this field
                 }
             }
         }
@@ -41,9 +41,10 @@ def get_noticeable_subscribers():
     print("Noticeable API Response:", response.status_code, response.text)  # Debugging Line
 
     if response.status_code == 200:
-        return response.json().get("data", {}).get("subscribers", {}).get("edges", [])
+        return response.json().get("data", {}).get("projectSubscribers", {}).get("edges", [])
     else:
         raise Exception(f"Failed to fetch Noticeable subscribers: {response.text}")
+
 
 # Function to update Marketo static list
 def update_marketo_list(subscribers, remove=False):
